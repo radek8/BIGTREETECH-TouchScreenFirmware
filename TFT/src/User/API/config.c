@@ -587,12 +587,11 @@ void parseConfigKey(u16 index)
     break;
 
   case C_INDEX_ACK_NOTIFICATION:
+    if (inLimit(config_int(),0,2))
     {
-      u8 i = config_int();
-      if (inLimit(i,0,2))
-        infoSettings.ack_notification = i;
-      break;
+      infoSettings.ack_notification = config_int();
     }
+    break;
 
   case C_INDEX_PRINT_SUMMARY:
       infoSettings.print_summary = getOnOff();
@@ -815,12 +814,11 @@ void parseConfigKey(u16 index)
     break;
 
   case C_INDEX_ONBOARD_SD:
+    if (inLimit(config_int(),0,2))
     {
-      u8 i = config_int();
-      if (inLimit(i,0,2))
-        infoSettings.onboardSD = i;
-      break;
+      infoSettings.onboardSD = config_int();
     }
+    break;
 
   case C_INDEX_M27_DELAY:
     if (inLimit(config_int(), MIN_DELAY_SEC, MAX_DELAY_SEC))
@@ -832,12 +830,11 @@ void parseConfigKey(u16 index)
     break;
 
   case C_INDEX_LONG_FILENAME:
+    if (inLimit(config_int(),0,2))
     {
-      u8 i = config_int();
-      if (inLimit(i,0,2))
-        infoSettings.longFileName = i;
-      break;
+      infoSettings.longFileName = config_int();
     }
+    break;
 
   case C_INDEX_FAN_PERCENT:
       infoSettings.fan_percentage = getOnOff();
@@ -960,12 +957,10 @@ void parseConfigKey(u16 index)
 #ifdef PS_ON_PIN
 
   case C_INDEX_PS_ON:
-    if (config_int() == 1)
-      infoSettings.auto_off = 1;
-    else if(config_int() == 2)
-      infoSettings.auto_off = 2;
-    else
-      infoSettings.auto_off = 0;
+    if (inLimit(config_int(),0,2))
+    {
+      infoSettings.auto_off = config_int();
+    }
     break;
 
   case C_INDEX_PS_LOGIC:
@@ -1006,7 +1001,10 @@ void parseConfigKey(u16 index)
 
 #ifdef FIL_RUNOUT_PIN
   case C_INDEX_RUNOUT:
-      infoSettings.runout = getOnOff();
+    if (inLimit(config_int(),0,2))
+    {
+      infoSettings.runout = config_int();
+    }
     break;
 
   case C_INDEX_RUNOUT_LOGIC:
@@ -1026,24 +1024,15 @@ void parseConfigKey(u16 index)
   //---------------------------------------------------------other device specific settings
 #ifdef BUZZER_PIN
   case C_INDEX_TOUCH_SOUND:
-    if (inLimit(config_int(),0,1))
-      {
-        infoSettings.touchSound = config_int();
-      }
+        infoSettings.touchSound = getOnOff();
     break;
 
   case C_INDEX_TOAST_SOUND:
-    if (inLimit(config_int(),0,1))
-      {
-        infoSettings.toastSound = config_int();
-      }
+        infoSettings.toastSound = getOnOff();
     break;
 
   case C_INDEX_ALERT_SOUND:
-    if (inLimit(config_int(),0,1))
-      {
-        infoSettings.alertSound = config_int();
-      }
+        infoSettings.alertSound = getOnOff();
     break;
 #endif
 
