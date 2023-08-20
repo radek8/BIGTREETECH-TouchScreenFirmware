@@ -784,22 +784,23 @@ void parseACK(void)
     // Tuning parsed responses
     //----------------------------------------
 
-    // parse and store build volume size
-    else if (ack_seen("work:"))
+    // parse and store soft endstops (M211)
+    else if (GET_BIT(infoMachineSettings.softwareEndstops, 1))
     {
-      if (ack_continue_seen("min:"))
+      if (ack_seen("Min:"))
       {
-        if (ack_continue_seen("x:")) infoSettings.machine_size_min[X_AXIS] = ack_value();
-        if (ack_continue_seen("y:")) infoSettings.machine_size_min[Y_AXIS] = ack_value();
-        if (ack_continue_seen("z:")) infoSettings.machine_size_min[Z_AXIS] = ack_value();
+        // check endstop minimum values
+        if (ack_continue_seen("X")) infoSettings.endstop_min[X_AXIS] = ack_value();
+        if (ack_continue_seen("Y")) infoSettings.endstop_min[Y_AXIS] = ack_value();
+        if (ack_continue_seen("Z")) infoSettings.endstop_min[Z_AXIS] = ack_value();
+
+        // check endstop maximum values
+        if (ack_continue_seen("X")) infoSettings.endstop_max[X_AXIS] = ack_value();
+        if (ack_continue_seen("Y")) infoSettings.endstop_max[Y_AXIS] = ack_value();
+        if (ack_continue_seen("Z")) infoSettings.endstop_max[Z_AXIS] = ack_value();
       }
 
-      if (ack_continue_seen("max:"))
-      {
-        if (ack_continue_seen("x:")) infoSettings.machine_size_max[X_AXIS] = ack_value();
-        if (ack_continue_seen("y:")) infoSettings.machine_size_max[Y_AXIS] = ack_value();
-        if (ack_continue_seen("z:")) infoSettings.machine_size_max[Z_AXIS] = ack_value();
-      }
+      SET_BIT_OFF(infoMachineSettings.softwareEndstops, 1);  // clear "M211 seen" flag
     }
     // parse M48, repeatability test
     else if (ack_starts_with("Mean:"))
@@ -835,10 +836,12 @@ void parseACK(void)
     else if (ack_starts_with("M211") || ack_seen("Soft endstops"))
     {
       uint8_t curValue = infoMachineSettings.softwareEndstops;
-      infoMachineSettings.softwareEndstops = ack_continue_seen("ON");
+      SET_BIT_VALUE(infoMachineSettings.softwareEndstops, 0, ack_continue_seen("ON"));  // set ON/Off bit
 
       if (curValue != infoMachineSettings.softwareEndstops)  // send a notification only if status is changed
         addToast(DIALOG_TYPE_INFO, ack_cache);
+
+      SET_BIT_ON(infoMachineSettings.softwareEndstops, 1);  // set "M211 seen" flag
     }
     // parse M303, PID autotune finished message
     else if (ack_starts_with("PID Autotune finished"))
@@ -916,16 +919,23 @@ void parseACK(void)
       mblUpdateStatus(true);
     }
     // parse G30, feedback to get the 4 corners Z value returned by Marlin for LevelCorner menu
-    else if (ack_seen("Bed X: "))
+    else if (ack_seen("Bed X:"))
     {
       float x = ack_value();
-      float y = 0;
 
-      if (ack_continue_seen("Y: "))
-        y = ack_value();
+      if (ack_continue_seen("Y:"))
+      {
+        float y = ack_value();
 
-      if (ack_continue_seen("Z: "))
-        levelingSetProbedPoint(x, y, ack_value());  // save probed Z value
+        if (ack_continue_seen("Z:"))
+          levelingSetProbedPoint(x, y, ack_value());  // save probed Z value
+      }
+    }
+    // parse G30 coordinate unreachable message
+    else if (ack_seen("Z Probe Past Bed"))
+    {
+      levelingSetProbedPoint(-1, -1, 0);  // cancel waiting for coordinates
+      BUZZER_PLAY(SOUND_ERROR);
     }
     #if DELTA_PROBE_TYPE != 0
       // parse and store Delta calibration settings

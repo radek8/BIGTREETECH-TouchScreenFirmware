@@ -14,10 +14,10 @@ extern "C" {
 // Config version support (format YYYYMMDD)
 // change if new elements/keywords are added/removed/changed in the Configuration.h
 // this number should match CONFIG_VERSION in Configuration.h
-#define CONFIG_SUPPPORT 20230821
+#define CONFIG_SUPPPORT 20231001
 
 #define FONT_FLASH_SIGN       20230821  // (YYYYMMDD) change if fonts require updating
-#define CONFIG_FLASH_SIGN     20230821  // (YYYYMMDD) change if any keyword(s) in config.ini is added or removed
+#define CONFIG_FLASH_SIGN     20231001  // (YYYYMMDD) change if any keyword(s) in config.ini is added or removed
 #define LANGUAGE_FLASH_SIGN   20230821  // (YYYYMMDD) change if any keyword(s) in language pack is added or removed
 #define ICON_FLASH_SIGN       20230821  // (YYYYMMDD) change if any icon(s) is added or removed
 
@@ -222,8 +222,9 @@ typedef struct
   uint16_t max_temp[MAX_HEATER_COUNT];  // hotends + bed + chamber
   uint16_t min_ext_temp;
   uint8_t  fan_max[MAX_FAN_COUNT];
-  int16_t  machine_size_min[AXIS_NUM];  // X, Y, Z
-  int16_t  machine_size_max[AXIS_NUM];  // X, Y, Z
+  int16_t  endstop_min[AXIS_NUM];  // X, Y, Z
+  int16_t  endstop_max[AXIS_NUM];  // X, Y, Z
+  uint16_t bed_size[AXIS_NUM - 1];  // X, Y
   uint16_t xy_speed[SPEED_COUNT];
   uint16_t z_speed[SPEED_COUNT];
   uint16_t ext_speed[SPEED_COUNT];

@@ -1,89 +1,56 @@
 #include "LevelCorner.h"
 #include "includes.h"
 
-const uint8_t valIconIndex[LEVELING_POINT_COUNT] = {4, 5, 1, 0, 3};
+const uint8_t valIconIndex[LEVELING_POINT_COUNT] = {KEY_ICON_4, KEY_ICON_5, KEY_ICON_1, KEY_ICON_0, KEY_ICON_3};
 
 // buffer current Z value measured in Level Corner = {position 1, position 2, position 3, position 4, probe accuracy(M48)}
 float levelCornerPosition[LEVELING_POINT_COUNT] = {0};
 
 int16_t origLevelEdge = -1;
 
-uint8_t getLevelEdgeMin(void)
+static uint8_t getLevelEdgeMin(void)
 {
-  // min edge limit for the probe with probe offset set in parseACK.c
-  int16_t maxXedge = getParameter(P_PROBE_OFFSET, AXIS_INDEX_X) + getParameter(P_HOME_OFFSET, AXIS_INDEX_X);
-  int16_t maxYedge = getParameter(P_PROBE_OFFSET, AXIS_INDEX_Y) + getParameter(P_HOME_OFFSET, AXIS_INDEX_Y);
+  uint16_t edge = 0;
+  int16_t val;
+  int16_t probeOffset;
+  int16_t homeOffset;
 
-  maxXedge = ABS(maxXedge);
-  maxYedge = ABS(maxYedge);
+  probeOffset = getParameter(P_PROBE_OFFSET, X_AXIS);
+  homeOffset = getParameter(P_HOME_OFFSET, X_AXIS);
 
-  return MAX(maxXedge, maxYedge) + 1;
+  val = infoSettings.endstop_min[X_AXIS] + probeOffset + homeOffset;
+  if (val > edge) edge = val;
+
+  val = infoSettings.bed_size[X_AXIS] - infoSettings.endstop_max[X_AXIS] - probeOffset - homeOffset;
+  if (val > edge) edge = val;
+
+  probeOffset = getParameter(P_PROBE_OFFSET, Y_AXIS);
+  homeOffset = getParameter(P_HOME_OFFSET, Y_AXIS);
+
+  val = infoSettings.endstop_min[Y_AXIS] + probeOffset + homeOffset;
+  if (val > edge) edge = val;
+
+  val = infoSettings.bed_size[Y_AXIS] - infoSettings.endstop_max[Y_AXIS] - probeOffset - homeOffset;
+  if (val > edge) edge = val;
+
+  return edge + 1;
 }
 
-uint8_t getLevelEdgeDefault(void)
+static uint8_t getLevelEdgeDefault(void)
 {
   return MAX(origLevelEdge, getLevelEdgeMin());
 }
 
-void setLevelEdgeMin(void)
+static void setLevelEdgeMin(void)
 {
   infoSettings.level_edge = getLevelEdgeMin();
 }
 
 // draw values under icons
-void refreshValue(MENUITEMS * levelItems, uint8_t index)
+static void refreshValue(MENUITEMS * levelItems, uint8_t index)
 {
-  sprintf((char *)levelItems->items[valIconIndex[index]].label.address, "%.4f", levelCornerPosition[index]);
+  sprintf((char *)levelItems->items[valIconIndex[index]].label.address, "%.3f", levelCornerPosition[index]);
   menuDrawIconText(&levelItems->items[valIconIndex[index]], valIconIndex[index]);
-}
-
-void checkRefreshValue(MENUITEMS * levelItems)
-{
-  LEVELING_POINT levelingPoint = levelingGetProbedPoint();
-
-  if (levelingPoint != LEVEL_NO_POINT)
-  {
-    levelCornerPosition[levelingPoint] = levelingGetProbedZ();
-    refreshValue(levelItems, levelingPoint);
-
-    levelingResetProbedPoint();  // reset to check for new updates
-  }
-}
-
-// show M48 on icon
-void drawProbeAccuracyIcon(MENUITEMS * levelItems)
-{
-  uint8_t index = 4;
-  GUI_POINT loc;
-  LIVE_INFO lvIcon;
-  char * str = "M48";
-
-  loc.x = 5;
-  loc.y = ICON_HEIGHT - 5;
-
-  lvIcon.iconIndex = levelItems->items[valIconIndex[index]].icon;
-  lvIcon.enabled[0] = true;
-  lvIcon.enabled[1] = true;
-  lvIcon.enabled[2] = false;
-
-  lvIcon.lines[0].h_align = LEFT;
-  lvIcon.lines[0].v_align = BOTTOM;
-  lvIcon.lines[0].fn_color = LC_VAL_COLOR;
-  lvIcon.lines[0].text_mode = GUI_TEXTMODE_TRANS;
-  lvIcon.lines[0].pos = loc;
-  lvIcon.lines[0].font = FONT_SIZE_NORMAL;
-
-  lvIcon.lines[1].h_align = LEFT;
-  lvIcon.lines[1].v_align = BOTTOM;
-  lvIcon.lines[1].fn_color = LC_VAL_COLOR_2;
-  lvIcon.lines[1].text_mode = GUI_TEXTMODE_TRANS;
-  lvIcon.lines[1].pos = (GUI_POINT){loc.x - 2, loc.y - 2};
-  lvIcon.lines[1].font = FONT_SIZE_NORMAL;
-
-  lvIcon.lines[0].text = (uint8_t *)str;
-  lvIcon.lines[1].text = (uint8_t *)str;
-
-  showLiveInfo(valIconIndex[index], &lvIcon, false);
 }
 
 void menuLevelCorner(void)
@@ -93,19 +60,19 @@ void menuLevelCorner(void)
     LABEL_LEVEL_CORNER,
     // icon                      label
     {
-      {ICON_POINT_4,             LABEL_DYNAMIC},
-      {ICON_POINT_3,             LABEL_DYNAMIC},
+      {ICON_POINT_4,             LABEL_NULL},
+      {ICON_POINT_3,             LABEL_NULL},
       {ICON_LEVEL_EDGE_DISTANCE, LABEL_DISTANCE},
-      {ICON_BLTOUCH,             LABEL_DYNAMIC},
-      {ICON_POINT_1,             LABEL_DYNAMIC},
-      {ICON_POINT_2,             LABEL_DYNAMIC},
+      {ICON_BLTOUCH,             LABEL_NULL},
+      {ICON_POINT_1,             LABEL_NULL},
+      {ICON_POINT_2,             LABEL_NULL},
       {ICON_RESUME,              LABEL_START},
       {ICON_BACK,                LABEL_BACK},
     }
   };
 
   KEY_VALUES key_num = KEY_IDLE;
-  char iconText[LEVELING_POINT_COUNT][15];
+  char iconText[LEVELING_POINT_COUNT][5] = {"---", "---", "---", "---", "M48"};
 
   if (origLevelEdge < 0)  // initialize leveling edge value to be used for leveling corner if not yet initialized (-1)
   {
@@ -113,15 +80,12 @@ void menuLevelCorner(void)
     infoSettings.level_edge = getLevelEdgeDefault();  // set leveling edge value for leveling corner
   }
 
-  for (uint8_t i = 0; i < LEVELING_POINT_COUNT; i++)
+  for (uint8_t i = LEVEL_BOTTOM_LEFT; i < LEVELING_POINT_COUNT; i++)
   {
     levelCornerItems.items[valIconIndex[i]].label.address = (uint8_t *)iconText[i];
-
-    refreshValue(&levelCornerItems, i);
   }
 
   menuDrawPage(&levelCornerItems);
-  drawProbeAccuracyIcon(&levelCornerItems);
 
   while (MENU_IS(menuLevelCorner))
   {
@@ -129,11 +93,25 @@ void menuLevelCorner(void)
     switch (key_num)
     {
       case KEY_ICON_0:
-        levelingProbePoint(LEVEL_TOP_LEFT);
-        break;
-
       case KEY_ICON_1:
-        levelingProbePoint(LEVEL_TOP_RIGHT);
+      case KEY_ICON_4:
+      case KEY_ICON_5:
+      case KEY_ICON_6:
+        for (int lvlPoint = LEVEL_BOTTOM_LEFT; lvlPoint <= LEVEL_TOP_LEFT; lvlPoint++)
+        {
+          if (key_num < KEY_ICON_6 && key_num != valIconIndex[lvlPoint])
+            continue;
+
+          levelingProbePoint(lvlPoint);
+
+          // wait until point probing is executed
+          TASK_LOOP_WHILE(levelingGetProbedPoint() == LEVEL_NO_POINT);
+
+          levelCornerPosition[lvlPoint] = levelingGetProbedZ();
+          refreshValue(&levelCornerItems, lvlPoint);
+          levelingResetProbedPoint();  // reset to check for new updates
+        }
+
         break;
 
       case KEY_ICON_2:
@@ -151,27 +129,6 @@ void menuLevelCorner(void)
 
       case KEY_ICON_3:
         mustStoreCmd("M48\n");
-
-        drawProbeAccuracyIcon(&levelCornerItems);
-        break;
-
-      case KEY_ICON_4:
-        levelingProbePoint(LEVEL_BOTTOM_LEFT);
-        break;
-
-      case KEY_ICON_5:
-        levelingProbePoint(LEVEL_BOTTOM_RIGHT);
-        break;
-
-      case KEY_ICON_6:
-        for (int i = LEVEL_BOTTOM_LEFT; i <= LEVEL_TOP_LEFT; i++)
-        {
-          levelingProbePoint(i);
-
-          // following loop needed to guarantee the value for each point beeing probed is updated at least one time on the menu
-          TASK_LOOP_WHILE(isNotEmptyCmdQueue(), checkRefreshValue(&levelCornerItems));
-        }
-
         break;
 
       case KEY_ICON_7:
@@ -185,7 +142,5 @@ void menuLevelCorner(void)
     }
 
     loopProcess();
-
-    checkRefreshValue(&levelCornerItems);
   }
 }
